@@ -1,0 +1,57 @@
+id: performance
+title: Lag watch and /perf
+summary: Staff — how the server's tick is doing, lag reports with fixes, /perf and /farms.
+intro: |
+  Staff business: I watch the tick, find what slows it down, and hand you buttons to fix it. Players only notice when a farm is full — that has its own page.
+icon: CLOCK
+category: Staff
+order: 70
+module: performance
+permission: rainsperformance.inspect
+aliases: [perf, lag, farms, tps, report, reports, lagwatch]
+keywords: [tps, mspt, spike, simulation distance, entities, chunks, fix, report, alerts, crowded]
+commands: [perf, farms]
+related: [farm-limits]
+sections:
+  - question: How is the server doing?
+    title: Status
+    text: |
+      {run:/perf} shows the TPS, the mean tick time, the 95th percentile and the worst tick of the last minute, whether the state is healthy, strained, lagging or a spike, and the top causes of busy time (a plugin, or what the server was doing).
+      A tick is <i>strained</i> from {setting:performance:strained-ms|count} ms on average — shown, not reported. A single tick of {setting:performance:spike-ms|count} ms or more is a <i>spike</i>.
+  - question: When do I get a lag report?
+    title: Automatic reports
+    when: performance:watch
+    text: |
+      Every five seconds the tick is checked. When the server lags, or a spike happens, I look at what it was busy with and what the chunks hold, write a report, log it and tell everybody with <white>rainsperformance.notify</white> in chat.
+      After a report the same lag is not reported again for {setting:performance:quiet-minutes|minutes} — unless it gets worse or something new is found.
+      {cmd:/perf alerts} turns those chat reports off and on for you alone; the console always gets them. The last {setting:performance:reports-kept|count} reports are kept.
+  - question: How do I ask for a report myself?
+    title: Reports on demand
+    text: |
+      {cmd:/perf report} looks now and writes a report. {run:/perf reports} lists the last ones, {cmd:/perf show <n>} shows one again.
+      A report lists the top causes, up to five findings (a place with the count and kind, which claim and owners it belongs to), and advice. Each finding has buttons: <white>[Go]</white> teleports you there, <white>[Fix]</white> or <white>[Tell owner]</white> acts on it.
+  - question: What counts as a finding?
+    title: Findings
+    text: |
+      A chunk holding more than the limit of: dropped items and orbs ({setting:performance:items-per-chunk|count}), animals of one kind ({setting:performance:animals-per-chunk|count}), monsters ({setting:performance:monsters-per-chunk|count}), villagers ({setting:performance:villagers-per-chunk|count}), block entities of one kind such as hoppers ({setting:performance:block-entities-per-chunk|count}), or entities of any kind ({setting:performance:entities-per-chunk|count}).
+      A plugin with at least {setting:performance:suspect-percent|count}% of the busy time is named as a suspect.
+  - question: What do the fixes do?
+    title: Fixes
+    permission: rainsperformance.fix
+    text: |
+      {cmd:/perf fix <n> <finding>} applies a finding's fix: thins animals down to the limit (babies first, never named, tamed or leashed ones), clears dropped items and orbs, removes monsters the game would despawn anyway (named and leashed ones stay), or tells the owners of the claim, if they are online. It says how many it removed, and everything is logged with your name.
+      {cmd:/perf fix <n> distance} lowers the simulation distance of every world to the advised value until the next restart — never below {setting:performance:lowest-simulation-distance|count} chunks. {run:/perf undo} puts it back.
+  - question: How do I go to a finding?
+    title: Teleporting
+    permission: rainsperformance.teleport
+    text: |
+      {cmd:/perf tp <n> <finding>} takes you to the place of a report's finding; the <white>[Go]</white> button does the same. Needs <white>rainsperformance.teleport</white>.
+  - question: Where are the crowded chunks?
+    title: /farms
+    text: |
+      {run:/farms} lists the ten most crowded loaded chunks with at least 40 entities, with their most common kind and coordinates. {cmd:/farms <least>} uses another minimum.
+  - question: Which permissions are there?
+    title: Permissions
+    text: |
+      <white>rainsperformance.inspect</white>: /perf, reports and /farms. <white>rainsperformance.fix</white>: fix and undo. <white>rainsperformance.teleport</white>: /perf tp. <white>rainsperformance.notify</white>: being told about lag in chat. All operators by default.
+      On Folia no thread may look at every world, so the lag watch and these commands are off there; the farm limits work as everywhere.

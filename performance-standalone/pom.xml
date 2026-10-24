@@ -26,7 +26,7 @@
         <!-- 0.1.0: farm limits (breeding and eggs stop where too many animals stand), a lag watch that
                     finds the cause of a slow tick, proposes fixes and reports to staff.
                     0.2.0: RainsCore 2.0 — the reports are documents in Core's database, no files. -->
-        <plugin.version>0.2.0</plugin.version>
+        <plugin.version>0.3.0</plugin.version>
     </properties>
 
     <dependencies>

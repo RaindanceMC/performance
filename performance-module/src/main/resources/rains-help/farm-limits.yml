@@ -1,0 +1,37 @@
+id: farm-limits
+title: Animal farm limits
+summary: Why breeding or hatching stops where too many animals already stand, and what is never removed.
+intro: |
+  Bred your hundredth chicken and the hundred-and-first just... did not come? That is me, not a bug. Enormous animal farms are what make servers lag, so there is a ceiling.
+icon: EGG
+category: Everything else
+order: 50
+module: performance
+when: performance:enabled
+aliases: [farm, farms, breeding, animal-limit, chickens, mob-cap]
+keywords: [breed, eggs, hatch, babies, full, lag, animals, crowded, farm-limit]
+sections:
+  - question: Why won't my animals breed?
+    title: A full farm
+    text: |
+      Breeding and hatching stop when too many animals are packed together. Animals are counted within {setting:performance:radius|count} blocks of where the newborn would appear, so a farm over a chunk border is still one farm.
+      {if:performance:most-of-one-kind > 0}No more than <white>{setting:performance:most-of-one-kind|count}</white> animals of the same kind may stand that close.{/if}
+      {if:performance:most-animals > 0}And no more than <white>{setting:performance:most-animals|count}</white> breedable animals of any kind together.{/if}
+      The parents breed as usual, they just get no baby — and nothing breaks.
+  - question: What counts as farming?
+    title: What is limited
+    text: |
+      Only what players farm with: breeding two animals, a thrown egg, and an egg shot out of a dispenser. Natural spawns (the game has its own mob caps), spawn eggs and commands are not touched.
+  - question: Will you remove my animals?
+    title: Existing animals
+    text: |
+      No. This only stops <i>new</i> animals appearing; every animal that already exists stays. Staff can thin a crowd that is slowing the server down — in that case babies go first, and a named, tamed or leashed animal is never removed.
+      Name your favourites with a name tag and they are safe from any thinning.
+  - question: How do I make room?
+    title: Making room
+    text: |
+      Spread out: move animals into several farms, or slaughter the surplus (or sell it, if you are of a commercial bent). Once fewer animals stand within {setting:performance:radius|count} blocks, breeding works again at once.
+  - question: Will I be told that a farm is full?
+    title: The warning
+    text: |
+      {if:performance:tell-players}Yes: players close to a full farm get a short line in the action bar, at most once a minute, saying which limit was hit.{else}No, the server stays silent about it — the baby just does not appear.{/if}
