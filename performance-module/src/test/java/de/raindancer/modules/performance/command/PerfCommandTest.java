@@ -50,4 +50,44 @@ class PerfCommandTest {
 
         verify(messages, org.mockito.Mockito.times(2)).send(looker, "performance.not-allowed");
     }
+
+    @Test
+    @DisplayName("show, fix and tp without their number say how to use them instead of 'no such report'")
+    void missingArgumentsShowUsage() {
+        Messages messages = mock(Messages.class);
+        PerformanceServices services = mock(PerformanceServices.class);
+        when(services.messages()).thenReturn(messages);
+        Player staff = mock(Player.class);
+        when(staff.hasPermission(org.mockito.ArgumentMatchers.anyString())).thenReturn(true);
+        CommandSourceStack source = mock(CommandSourceStack.class);
+        when(source.getSender()).thenReturn(staff);
+
+        PerfCommand command = new PerfCommand(() -> services);
+        command.execute(source, new String[]{"show"});
+        command.execute(source, new String[]{"fix"});
+        command.execute(source, new String[]{"tp"});
+
+        verify(messages).send(staff, "performance.usage-show");
+        verify(messages).send(staff, "performance.usage-fix");
+        verify(messages).send(staff, "performance.usage-tp");
+    }
+
+    @Test
+    @DisplayName("the third word of fix and tp suggests the report's finding numbers")
+    void suggestsFindings() {
+        PerformanceServices services = mock(PerformanceServices.class);
+        de.raindancer.modules.performance.store.ReportStore store = mock(de.raindancer.modules.performance.store.ReportStore.class);
+        de.raindancer.modules.performance.model.Report report = mock(de.raindancer.modules.performance.model.Report.class);
+        when(report.number()).thenReturn(4);
+        when(report.findings()).thenReturn(java.util.Collections.nCopies(3, null));
+        when(store.get(4)).thenReturn(java.util.Optional.of(report));
+        when(services.reports()).thenReturn(store);
+        CommandSourceStack source = mock(CommandSourceStack.class);
+
+        PerfCommand command = new PerfCommand(() -> services);
+        org.assertj.core.api.Assertions.assertThat(command.suggest(source, new String[]{"tp", "4", ""}))
+                .containsExactly("1", "2", "3");
+        org.assertj.core.api.Assertions.assertThat(command.suggest(source, new String[]{"fix", "4", ""}))
+                .containsExactly("1", "2", "3", "distance");
+    }
 }

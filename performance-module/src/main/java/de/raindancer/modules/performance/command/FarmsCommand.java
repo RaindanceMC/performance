@@ -36,7 +36,7 @@ public final class FarmsCommand implements BasicCommand {
             try {
                 least = Math.max(1, Integer.parseInt(args[0]));
             } catch (NumberFormatException notANumber) {
-                live.messages().send(sender, "performance.usage");
+                live.messages().send(sender, "performance.usage-farms");
                 return;
             }
         }
@@ -50,6 +50,11 @@ public final class FarmsCommand implements BasicCommand {
             live.messages().sendPlain(sender, "performance.line", "total", spot.total(), "kind", spot.mostCommon(),
                     "kind-count", spot.mostCommonCount(), "world", spot.world(), "x", spot.blockX(), "z", spot.blockZ());
         }
+    }
+
+    @Override
+    public java.util.Collection<String> suggest(CommandSourceStack source, String[] args) {
+        return args.length <= 1 ? List.of("20", "40", "80", "150") : List.of();
     }
 
     @Override

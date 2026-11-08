@@ -2,6 +2,7 @@ package de.raindancer.modules.performance.service;
 
 import de.raindancer.modules.performance.model.SampleRing;
 import de.raindancer.modules.performance.rules.CauseRule;
+import de.raindancer.modules.performance.rules.SamplePace;
 
 import java.lang.management.ManagementFactory;
 import java.lang.management.ThreadInfo;
@@ -17,7 +18,8 @@ import java.util.function.IntSupplier;
  * Looks at the server thread's stack every few milliseconds and remembers what it was busy with — so a
  * spike can be explained after it happened, which is the only time anybody knows it did. Runs on its
  * own daemon thread, not a scheduler: a sample must be taken while the server thread is busy, which is
- * exactly when the server's own schedulers are not running.
+ * exactly when the server's own schedulers are not running. It wakes every few milliseconds but only looks
+ * (which pauses the server thread for a moment) while a tick has run long, and otherwise twice a second.
  */
 public final class Sampler implements AutoCloseable {
 
@@ -33,7 +35,11 @@ public final class Sampler implements AutoCloseable {
     private final SampleRing ring;
     private final CauseRule causes;
     private final IntSupplier everyMs;
+    private final SamplePace pace = new SamplePace();
     private volatile long serverThread = -1;
+    /** Nanos at which the running tick began, 0 between ticks. */
+    private volatile long tickBegan;
+    private long lastSample;
     private volatile boolean closed;
 
     public Sampler(SampleRing ring, CauseRule causes, IntSupplier everyMs) {
@@ -47,6 +53,14 @@ public final class Sampler implements AutoCloseable {
         this.serverThread = id;
     }
 
+    public void tickStarted() {
+        tickBegan = System.nanoTime();
+    }
+
+    public void tickEnded() {
+        tickBegan = 0;
+    }
+
     public void start() {
         runner.schedule(this::sampleAndReschedule, IDLE_CHECK_MS, TimeUnit.MILLISECONDS);
     }
@@ -57,7 +71,11 @@ public final class Sampler implements AutoCloseable {
         }
         int every = everyMs.getAsInt();
         try {
-            if (every > 0 && serverThread >= 0) {
+            long now = System.nanoTime();
+            long began = tickBegan;
+            long busyMs = began == 0 ? -1 : (now - began) / 1_000_000;
+            if (every > 0 && serverThread >= 0 && pace.due(busyMs, (now - lastSample) / 1_000_000)) {
+                lastSample = now;
                 ThreadInfo info = threads.getThreadInfo(serverThread, DEPTH);
                 if (info != null) {
                     List<String> frames = new ArrayList<>(info.getStackTrace().length);

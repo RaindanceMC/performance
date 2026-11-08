@@ -13,17 +13,20 @@ import de.raindancer.modules.performance.rules.AdviceRule;
 import de.raindancer.modules.performance.rules.FindingRule;
 import de.raindancer.modules.performance.rules.LagRule;
 import de.raindancer.modules.performance.store.ReportStore;
+import de.raindancer.core.platform.util.Scheduling;
 import org.bukkit.Location;
 import org.bukkit.NamespacedKey;
 import org.bukkit.OfflinePlayer;
 import org.bukkit.Server;
 import org.bukkit.World;
+import org.bukkit.plugin.Plugin;
 
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 
 /**
@@ -54,10 +57,26 @@ public final class Diagnosis implements IPerformanceService {
         this.settings = changed;
     }
 
-    /** The findings as they stand — a census of every loaded chunk, judged. */
-    public List<Finding> findings() {
+    /** Budget per tick for counting chunks. */
+    private static final long CENSUS_NANOS = 1_500_000;
+
+    /**
+     * The findings as they stand: every loaded chunk counted, {@value #CENSUS_NANOS} ns at a time over as many
+     * ticks as it takes, then judged. {@code then} runs on the global region.
+     */
+    public void findingsAsync(Plugin plugin, Consumer<List<Finding>> then) {
+        Census.Job job = census.begin(server.getWorlds());
+        Scheduling.globalTimer(plugin, 1, 1, task -> {
+            if (job.step(CENSUS_NANOS)) {
+                task.cancel();
+                then.accept(judged(job.result()));
+            }
+        });
+    }
+
+    private List<Finding> judged(List<ChunkCensus> counted) {
         PerformanceSettings now = settings;
-        List<Finding> found = new FindingRule(now.limits()).findings(census.take(server.getWorlds()), now.farmLimit());
+        List<Finding> found = new FindingRule(now.limits()).findings(counted, now.farmLimit());
         List<Finding> owned = new ArrayList<>(found.size());
         for (Finding finding : found) {
             owned.add(withOwner(finding));

@@ -50,7 +50,7 @@ public final class PerfCommand implements BasicCommand {
             case "status" -> status(live, sender);
             case "report" -> report(live, sender);
             case "reports" -> list(live, sender);
-            case "show" -> withReport(live, sender, args, 1, report -> live.notifier().show(sender, report));
+            case "show" -> withReport(live, sender, args, 1, "performance.usage-show", report -> live.notifier().show(sender, report));
             case "fix" -> fix(live, sender, args);
             case "undo" -> undo(live, sender);
             case "tp" -> teleport(live, sender, args);
@@ -82,12 +82,13 @@ public final class PerfCommand implements BasicCommand {
         live.messages().send(sender, "performance.looking");
         Scheduling.global(live.plugin(), () -> {
             PerformanceServices now = services.get();
-            LagRule.State state = new LagRule(now.settings().get().strainedMs(), now.settings().get().spikeMs())
-                    .judge(now.window());
-            List<Finding> findings = now.diagnosis().findings();
-            Report report = now.diagnosis().report("asked for by " + sender.getName(), state, now.samples().all(), findings);
-            Scheduling.async(now.plugin(), () -> now.reports().add(report));
-            reply(now, sender, () -> now.notifier().show(sender, report));
+            now.diagnosis().findingsAsync(now.plugin(), findings -> {
+                LagRule.State state = new LagRule(now.settings().get().strainedMs(), now.settings().get().spikeMs())
+                        .judge(now.window());
+                Report report = now.diagnosis().report("asked for by " + sender.getName(), state, now.samples().all(), findings);
+                Scheduling.async(now.plugin(), () -> now.reports().add(report));
+                reply(now, sender, () -> now.notifier().show(sender, report));
+            });
         });
     }
 
@@ -109,8 +110,12 @@ public final class PerfCommand implements BasicCommand {
             live.messages().send(sender, "performance.not-allowed");
             return;
         }
-        withReport(live, sender, args, 1, report -> {
+        withReport(live, sender, args, 1, "performance.usage-fix", report -> {
             String which = args.length >= 3 ? args[2].toLowerCase(Locale.ROOT) : "";
+            if (which.isEmpty()) {
+                live.messages().send(sender, "performance.usage-fix");
+                return;
+            }
             if (which.equals("distance")) {
                 Optional<Fix> distance = report.advice().stream()
                         .filter(fix -> fix.action() == Fix.Action.SIMULATION_DISTANCE).findFirst();
@@ -155,7 +160,7 @@ public final class PerfCommand implements BasicCommand {
             live.messages().send(sender, "performance.not-allowed");
             return;
         }
-        withReport(live, sender, args, 1, report -> {
+        withReport(live, sender, args, 1, "performance.usage-tp", report -> {
             Optional<Finding> finding = parse(args.length >= 3 ? args[2] : "").flatMap(report::finding);
             World world = finding.map(found -> live.diagnosis().worldOf(found.where().world())).orElse(null);
             if (finding.isEmpty() || world == null) {
@@ -177,7 +182,11 @@ public final class PerfCommand implements BasicCommand {
     }
 
     private static void withReport(PerformanceServices live, CommandSender sender, String[] args, int at,
-                                   java.util.function.Consumer<Report> then) {
+                                   String usage, java.util.function.Consumer<Report> then) {
+        if (args.length <= at) {
+            live.messages().send(sender, usage);
+            return;
+        }
         Optional<Report> report = parse(args.length > at ? args[at] : "").flatMap(live.reports()::get);
         if (report.isEmpty()) {
             live.messages().send(sender, "performance.no-such-report");
@@ -210,6 +219,15 @@ public final class PerfCommand implements BasicCommand {
             options.addAll(List.of("status", "report", "reports", "show", "fix", "undo", "tp", "alerts"));
         } else if (args.length == 2 && List.of("show", "fix", "tp").contains(args[0].toLowerCase(Locale.ROOT))) {
             services.get().reports().recent().forEach(report -> options.add(String.valueOf(report.number())));
+        } else if (args.length == 3 && List.of("fix", "tp").contains(args[0].toLowerCase(Locale.ROOT))) {
+            parse(args[1]).flatMap(services.get().reports()::get).ifPresent(report -> {
+                for (int n = 1; n <= report.findings().size(); n++) {
+                    options.add(String.valueOf(n));
+                }
+                if (args[0].equalsIgnoreCase("fix")) {
+                    options.add("distance");
+                }
+            });
         }
         String typed = args.length == 0 ? "" : args[args.length - 1].toLowerCase(Locale.ROOT);
         return options.stream().filter(option -> option.startsWith(typed)).toList();

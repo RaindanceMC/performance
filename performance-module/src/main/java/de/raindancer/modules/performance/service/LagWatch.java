@@ -9,6 +9,7 @@ import de.raindancer.modules.performance.model.Report;
 import de.raindancer.modules.performance.model.SampleRing;
 import de.raindancer.modules.performance.model.Spike;
 import de.raindancer.modules.performance.model.TickWindow;
+import de.raindancer.modules.performance.rules.CensusPace;
 import de.raindancer.modules.performance.rules.LagRule;
 import de.raindancer.modules.performance.rules.NoticeRule;
 import de.raindancer.modules.performance.store.ReportStore;
@@ -24,7 +25,8 @@ import java.util.stream.Collectors;
 /**
  * Every five seconds: is the server lagging or did it spike? If so, and staff have not just been told
  * the same, look at what it was busy with and what the chunks hold, write a report, tell staff.
- * The census reads every world — it runs on the global region and only on a single-threaded server.
+ * The census reads every world — it runs on the global region, a few milliseconds per tick and at most
+ * once a minute, and only on a single-threaded server.
  */
 public final class LagWatch implements IPerformanceService, AutoCloseable {
 
@@ -40,7 +42,10 @@ public final class LagWatch implements IPerformanceService, AutoCloseable {
     private final LongSupplier clock;
     private volatile PerformanceSettings settings;
     private NoticeRule.Last last = NoticeRule.Last.NEVER;
+    private final CensusPace pace = new CensusPace(Duration.ofMinutes(1).toMillis());
     private long lastLook = System.nanoTime();
+    private long lastCount = CensusPace.NEVER;
+    private boolean counting;
     private ScheduledTask task;
 
     public LagWatch(Plugin plugin, TickWindow window, SampleRing samples, TickListener ticks, Diagnosis diagnosis,
@@ -68,8 +73,9 @@ public final class LagWatch implements IPerformanceService, AutoCloseable {
     private void look() {
         PerformanceSettings now = settings;
         long since = lastLook;
-        lastLook = System.nanoTime();
+        long started = System.nanoTime();
         if (!now.watch()) {
+            lastLook = started;
             return;
         }
         LagRule.State state = new LagRule(now.strainedMs(), now.spikeMs()).judge(window);
@@ -79,9 +85,27 @@ public final class LagWatch implements IPerformanceService, AutoCloseable {
         }
         NoticeRule rule = new NoticeRule(Duration.ofMinutes(now.quietMinutes()));
         if (!rule.shouldTell(last, clock.getAsLong(), state, Set.of()) && !lookAgain(state)) {
+            lastLook = started;
             return;
         }
-        List<Finding> findings = diagnosis.findings();
+        if (counting || !pace.mayStart(clock.getAsLong(), lastCount)) {
+            // Not now: the spikes since the last look stay unseen, so the next look still sees them.
+            return;
+        }
+        lastLook = started;
+        lastCount = clock.getAsLong();
+        counting = true;
+        LagRule.State judged = state;
+        diagnosis.findingsAsync(plugin, findings -> {
+            try {
+                tell(rule, judged, spikes, findings);
+            } finally {
+                counting = false;
+            }
+        });
+    }
+
+    private void tell(NoticeRule rule, LagRule.State state, List<Spike> spikes, List<Finding> findings) {
         Set<String> keys = findings.stream().map(Finding::key).collect(Collectors.toSet());
         if (!rule.shouldTell(last, clock.getAsLong(), state, keys)) {
             return;

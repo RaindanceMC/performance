@@ -2,6 +2,7 @@ package de.raindancer.modules.performance.service;
 
 import de.raindancer.modules.performance.model.ChunkCensus;
 import de.raindancer.modules.performance.model.EntityGroup;
+import de.raindancer.modules.performance.model.Sliced;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.World;
@@ -22,41 +23,74 @@ import java.util.Locale;
 import java.util.Map;
 
 /**
- * Counts what every loaded chunk holds. Reads every world, so only on a server with one main thread —
- * Paper, called from the global region (which is that thread). No decisions here; FindingRule makes them.
+ * Counts what every loaded chunk holds, a few milliseconds per tick ({@link #begin}). Reads every world, so only on
+ * a server with one main thread — Paper, called from the global region (which is that thread). No decisions here; FindingRule makes them.
  */
 public final class Census {
 
     /** A chunk with fewer block entities than this is not worth listing them for. */
     private static final int FEWEST_BLOCK_ENTITIES = 10;
 
+    /** All at once — for tests and tools that run off the tick; the lag watch uses {@link #begin}. */
     public List<ChunkCensus> take(Iterable<World> worlds) {
-        Map<String, ChunkCensus> chunks = new HashMap<>();
+        Job job = begin(worlds);
+        while (!job.step(Long.MAX_VALUE / 2)) {
+            // step again until nothing is left
+        }
+        return job.result();
+    }
+
+    /** A count that is done a few milliseconds per tick: call {@link Job#step} each tick until it says it is done. */
+    public Job begin(Iterable<World> worlds) {
+        List<Chunk> chunks = new ArrayList<>();
         for (World world : worlds) {
-            String key = world.getKey().asString();
-            for (Entity entity : world.getEntities()) {
+            chunks.addAll(java.util.Arrays.asList(world.getLoadedChunks()));
+        }
+        return new Job(chunks);
+    }
+
+    public static final class Job {
+        private final Map<String, ChunkCensus> found = new HashMap<>();
+        private final Sliced<Chunk> work;
+
+        private Job(List<Chunk> chunks) {
+            this.work = new Sliced<>(chunks, this::count, System::nanoTime);
+        }
+
+        /** @return true when every chunk has been counted */
+        public boolean step(long budgetNanos) {
+            return work.step(budgetNanos);
+        }
+
+        public List<ChunkCensus> result() {
+            return new ArrayList<>(found.values());
+        }
+
+        private void count(Chunk chunk) {
+            if (!chunk.isLoaded()) {
+                return;
+            }
+            String key = chunk.getWorld().getKey().asString();
+            for (Entity entity : chunk.getEntities()) {
                 if (entity instanceof Player) {
                     continue;
                 }
                 Location at = entity.getLocation();
-                int cx = at.getBlockX() >> 4;
-                int cz = at.getBlockZ() >> 4;
-                chunks.computeIfAbsent(key + "/" + cx + "/" + cz, ignored -> new ChunkCensus(key, cx, cz))
-                        .seen(typeOf(entity), groupOf(entity), at.getX(), at.getY(), at.getZ());
+                at(key, chunk).seen(typeOf(entity), groupOf(entity), at.getX(), at.getY(), at.getZ());
             }
-            for (Chunk chunk : world.getLoadedChunks()) {
-                BlockState[] states = chunk.getTileEntities(false);
-                if (states.length < FEWEST_BLOCK_ENTITIES) {
-                    continue;
-                }
-                ChunkCensus census = chunks.computeIfAbsent(key + "/" + chunk.getX() + "/" + chunk.getZ(),
-                        ignored -> new ChunkCensus(key, chunk.getX(), chunk.getZ()));
+            BlockState[] states = chunk.getTileEntities(false);
+            if (states.length >= FEWEST_BLOCK_ENTITIES) {
+                ChunkCensus census = at(key, chunk);
                 for (BlockState state : states) {
                     census.blockEntities(state.getType().getKey().getKey(), 1);
                 }
             }
         }
-        return new ArrayList<>(chunks.values());
+
+        private ChunkCensus at(String world, Chunk chunk) {
+            return found.computeIfAbsent(world + "/" + chunk.getX() + "/" + chunk.getZ(),
+                    ignored -> new ChunkCensus(world, chunk.getX(), chunk.getZ()));
+        }
     }
 
     static String typeOf(Entity entity) {

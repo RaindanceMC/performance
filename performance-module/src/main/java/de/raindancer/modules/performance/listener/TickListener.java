@@ -1,6 +1,7 @@
 package de.raindancer.modules.performance.listener;
 
 import com.destroystokyo.paper.event.server.ServerTickEndEvent;
+import com.destroystokyo.paper.event.server.ServerTickStartEvent;
 import de.raindancer.modules.performance.model.Spike;
 import de.raindancer.modules.performance.model.TickWindow;
 import de.raindancer.modules.performance.service.Sampler;
@@ -30,12 +31,18 @@ public final class TickListener implements IPerformanceListener {
         this.spikeMs = spikeMs;
     }
 
+    @EventHandler(priority = EventPriority.LOWEST)
+    public void onTickStart(ServerTickStartEvent event) {
+        sampler.tickStarted();
+    }
+
     @EventHandler(priority = EventPriority.MONITOR)
     public void onTickEnd(ServerTickEndEvent event) {
         if (!threadKnown) {
             sampler.serverThread(Thread.currentThread().threadId());
             threadKnown = true;
         }
+        sampler.tickEnded();
         double millis = event.getTickDuration();
         window.add(millis);
         if (millis >= spikeMs.getAsInt()) {
