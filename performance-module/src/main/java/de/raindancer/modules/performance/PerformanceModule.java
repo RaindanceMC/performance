@@ -7,13 +7,16 @@ import de.raindancer.modules.api.FlexModule;
 import de.raindancer.modules.api.ModuleCommand;
 import de.raindancer.modules.api.ModuleContext;
 import de.raindancer.modules.api.ModuleInfo;
+import de.raindancer.modules.performance.listener.AwayFarmListener;
 import de.raindancer.modules.performance.listener.FarmListener;
 import de.raindancer.modules.performance.listener.TickListener;
 import de.raindancer.modules.performance.model.ClassIndex;
 import de.raindancer.modules.performance.model.SampleRing;
 import de.raindancer.modules.performance.model.TickWindow;
+import de.raindancer.modules.performance.rules.AwayFarmRule;
 import de.raindancer.modules.performance.rules.CauseRule;
 import de.raindancer.modules.performance.rules.FarmRule;
+import de.raindancer.modules.performance.service.AwayWatchers;
 import de.raindancer.modules.performance.service.Census;
 import de.raindancer.modules.performance.service.ClassIndexLoader;
 import de.raindancer.modules.performance.service.Diagnosis;
@@ -33,7 +36,7 @@ import java.util.List;
 
 /**
  * Watches the tick, finds what slows it down, proposes fixes and reports to staff; also keeps animal
- * farms from growing past a limit. Written after Lilly's SMP sat at 15 TPS behind a 294-chicken farm
+ * farms from growing past a limit, and slows farms that only away players keep running. Written after Lilly's SMP sat at 15 TPS behind a 294-chicken farm
  * nobody knew about until somebody took a stack dump.
  */
 public final class PerformanceModule implements FlexModule {
@@ -43,7 +46,7 @@ public final class PerformanceModule implements FlexModule {
     /** A minute of samples at the default 20 ms. */
     private static final int SAMPLES_KEPT = 3000;
 
-    private static final ModuleInfo INFO = ModuleInfo.of("performance", "Performance Optimizer", "0.4.0")
+    private static final ModuleInfo INFO = ModuleInfo.of("performance", "Performance Optimizer", "0.5.0")
             .describedAs("Finds what slows the server down, proposes fixes, reports to staff, and keeps farms in check")
             .by("Raindancer118");
 
@@ -80,6 +83,10 @@ public final class PerformanceModule implements FlexModule {
         PerformanceServices services = new PerformanceServices(plugin, server, messages, settings::current,
                 new FarmRule(), new FarmCounter(), window, samples, diagnosis, store, fixes, notifier);
         context.listener(new FarmListener(services));
+        AwayFarmListener away = new AwayFarmListener(plugin, settings::current, new AwayFarmRule(), new AwayWatchers());
+        context.listener(away);
+        var looking = Scheduling.globalTimer(plugin, 20, 20, ignored -> away.look(server.getOnlinePlayers()));
+        context.closeWith(looking::cancel);
 
         if (Scheduling.isFolia()) {
             // No single server thread to sample or time, and no thread that may read every world.
@@ -100,8 +107,9 @@ public final class PerformanceModule implements FlexModule {
         PerformanceCommands.ready(services);
 
         PerformanceSettings now = settings.current();
-        context.log().info("Lag watch {}; farm limits {}: {} of one kind, {} animals within {} blocks.",
-                now.watch() ? "on" : "off", now.enabled() ? "on" : "off", now.mostOfOneKind(), now.mostAnimals(), now.radius());
+        context.log().info("Lag watch {}; farm limits {}: {} of one kind, {} animals within {} blocks; away players' farms {}.",
+                now.watch() ? "on" : "off", now.enabled() ? "on" : "off", now.mostOfOneKind(), now.mostAnimals(), now.radius(),
+                now.awayFarms() ? "at " + Math.round(now.awayFarmRate() * 100) + "%" : "at full speed");
     }
 
     @Override

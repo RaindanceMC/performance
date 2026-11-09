@@ -9,7 +9,7 @@ order: 50
 module: performance
 when: performance:enabled
 aliases: [farm, farms, breeding, animal-limit, chickens, mob-cap]
-keywords: [breed, eggs, hatch, babies, full, lag, animals, crowded, farm-limit]
+keywords: [breed, eggs, hatch, babies, full, lag, animals, crowded, farm-limit, afk, away, idle, crops, spawner]
 sections:
   - question: Why won't my animals breed?
     title: A full farm
@@ -35,3 +35,7 @@ sections:
     title: The warning
     text: |
       {if:performance:tell-players}Yes: players close to a full farm get a short line in the action bar, at most once a minute, saying which limit was hit.{else}No, the server stays silent about it — the baby just does not appear.{/if}
+  - question: Why are my farms slow while I am AFK?
+    title: Farms while you are away
+    text: |
+      {if:performance:away-farms}While every player near a farm is away from the keyboard, it runs at <white>{setting:performance:away-farm-rate}</white> of its usual speed: crops, saplings, mob spawning, spawners, breeding, iron golems, raids and laid eggs. "Near" is the simulation distance — the area the game keeps ticking around a player. One player nearby who is at the keyboard keeps it at full speed, and it is back to full speed the second you move again.{else}They are not — farms run at full speed whether anybody is at the keyboard or not.{/if}

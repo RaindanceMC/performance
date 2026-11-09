@@ -14,6 +14,7 @@ import org.bukkit.Material;
 @Settings(id = "performance", topics = {
         @Topic(path = "lag", title = "Lag watch", icon = Material.CLOCK),
         @Topic(path = "farms", title = "Farm limits", icon = Material.EGG),
+        @Topic(path = "away", title = "Away players' farms", icon = Material.WHEAT),
 })
 public record PerformanceSettings(
 
@@ -116,10 +117,23 @@ public record PerformanceSettings(
         @Describe("Whether players near a farm that is full are told, in the action bar and at most "
                 + "once a minute, why nothing more is born.")
         @Key("tell-players")
-        boolean tellPlayers) {
+        boolean tellPlayers,
+
+        @In("away") @Title("Slow farms of away players")
+        @Describe("Whether crops, saplings, mob spawning, spawners, breeding, iron golems, raids and laid eggs "
+                + "near players who are all away from the keyboard run slower. One player at the keyboard "
+                + "within simulation distance keeps them at full speed.")
+        @Key("away-farms")
+        boolean awayFarms,
+
+        @In("away") @Title("Speed while away") @Range(min = 0, max = 1)
+        @Describe("How much of the usual output a farm near only away players still makes: 0.1 is a tenth, "
+                + "0 stops it, 1 leaves it alone.")
+        @Key("away-farm-rate")
+        double awayFarmRate) {
 
     public static final PerformanceSettings DEFAULTS = new PerformanceSettings(true, 45, 250, 20, 10, 6, 25,
-            150, 80, 60, 40, 150, 250, 50, true, 16, 50, 150, true);
+            150, 80, 60, 40, 150, 250, 50, true, 16, 50, 150, true, true, 0.1);
 
     /** The defaults with other farm limits — what a test of the farm limit varies. */
     public static PerformanceSettings farms(boolean enabled, int radius, int mostOfOneKind, int mostAnimals, boolean tellPlayers) {
@@ -127,7 +141,16 @@ public record PerformanceSettings(
         return new PerformanceSettings(d.watch, d.strainedMs, d.spikeMs, d.sampleEveryMs, d.quietMinutes,
                 d.lowestSimulationDistance, d.suspectPercent, d.itemsPerChunk, d.animalsPerChunk, d.monstersPerChunk,
                 d.villagersPerChunk, d.blockEntitiesPerChunk, d.entitiesPerChunk, d.reportsKept,
-                enabled, radius, mostOfOneKind, mostAnimals, tellPlayers);
+                enabled, radius, mostOfOneKind, mostAnimals, tellPlayers, d.awayFarms, d.awayFarmRate);
+    }
+
+    /** The defaults with another slowdown for away players' farms. */
+    public static PerformanceSettings away(boolean awayFarms, double awayFarmRate) {
+        PerformanceSettings d = DEFAULTS;
+        return new PerformanceSettings(d.watch, d.strainedMs, d.spikeMs, d.sampleEveryMs, d.quietMinutes,
+                d.lowestSimulationDistance, d.suspectPercent, d.itemsPerChunk, d.animalsPerChunk, d.monstersPerChunk,
+                d.villagersPerChunk, d.blockEntitiesPerChunk, d.entitiesPerChunk, d.reportsKept,
+                d.enabled, d.radius, d.mostOfOneKind, d.mostAnimals, d.tellPlayers, awayFarms, awayFarmRate);
     }
 
     public FindingRule.Limits limits() {
