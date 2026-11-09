@@ -120,7 +120,8 @@ public record PerformanceSettings(
         boolean tellPlayers,
 
         @In("away") @Title("Slow farms of away players")
-        @Describe("Whether crops, saplings, mob spawning, spawners, breeding, iron golems, raids and laid eggs "
+        @Describe("Whether crops, saplings, mob spawning, spawners, breeding, iron golems, raids, laid eggs and piglin "
+                + "bartering "
                 + "near players who are all away from the keyboard run slower. One player at the keyboard "
                 + "within simulation distance keeps them at full speed.")
         @Key("away-farms")

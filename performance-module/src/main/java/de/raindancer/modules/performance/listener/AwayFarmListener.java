@@ -19,6 +19,7 @@ import org.bukkit.event.block.BlockGrowEvent;
 import org.bukkit.event.block.BlockSpreadEvent;
 import org.bukkit.event.entity.CreatureSpawnEvent;
 import org.bukkit.event.entity.EntityDropItemEvent;
+import org.bukkit.event.entity.PiglinBarterEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.event.world.StructureGrowEvent;
 import org.bukkit.plugin.Plugin;
@@ -29,7 +30,8 @@ import java.util.function.Supplier;
 
 /**
  * Slows what only runs because a player keeps the chunks around it ticking — crops, saplings, vines, mob
- * spawning, spawners, breeding, iron golems, raids, laid eggs — while every player that close is away.
+ * spawning, spawners, breeding, iron golems, raids, laid eggs, piglin bartering — while every player that close
+ * is away.
  *
  * <p>Each thing is let through with the configured chance, so a crop's every stage takes about ten times
  * as long and a tenth of the mobs appear. Events arrive on whichever region ticks the farm and read only
@@ -105,14 +107,27 @@ public final class AwayFarmListener implements IPerformanceListener {
         slow(event, at.getWorld(), at.getBlockX(), at.getBlockZ());
     }
 
-    private void slow(Cancellable event, World world, int blockX, int blockZ) {
+    @EventHandler(priority = EventPriority.HIGH, ignoreCancelled = true)
+    public void onBarter(PiglinBarterEvent event) {
+        Location at = event.getEntity().getLocation();
+        if (slow(event, at.getWorld(), at.getBlockX(), at.getBlockZ())) {
+            // The piglin let go of the gold before asking; cancelled alone, the barter would eat it. Dropped at its
+            // feet, it is picked up and tried again — slower, not lost.
+            at.getWorld().dropItem(at, event.getInput().clone());
+        }
+    }
+
+    /** Whether the event was cancelled. */
+    private boolean slow(Cancellable event, World world, int blockX, int blockZ) {
         if (!watchers.anyAway() || world == null) {
-            return;
+            return false;
         }
-        if (!rule.keeps(watchers.all(), world.getUID(), blockX >> 4, blockZ >> 4,
+        if (rule.keeps(watchers.all(), world.getUID(), blockX >> 4, blockZ >> 4,
                 ThreadLocalRandom.current().nextDouble(), settings.get())) {
-            event.setCancelled(true);
+            return false;
         }
+        event.setCancelled(true);
+        return true;
     }
 
     @EventHandler(priority = EventPriority.MONITOR)
