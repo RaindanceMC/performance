@@ -40,7 +40,7 @@ public record PerformanceSettings(
         int sampleEveryMs,
 
         @In("lag") @Title("Quiet for (minutes)") @Range(min = 1, max = 240)
-        @Describe("After a report, the same lag is not reported again for this long — unless it gets worse or "
+        @Describe("After a report, the same lag is not reported again for this long, unless it gets worse or "
                 + "something new is found.")
         @Key("quiet-minutes")
         int quietMinutes,
@@ -66,7 +66,7 @@ public record PerformanceSettings(
         int animalsPerChunk,
 
         @In("lag") @Title("Monsters in a chunk") @Range(min = 10, max = 10000)
-        @Describe("This many hostile mobs in one chunk are a crowd worth reporting — usually a mob farm.")
+        @Describe("This many hostile mobs in one chunk are a crowd worth reporting, usually a mob farm.")
         @Key("monsters-per-chunk")
         int monstersPerChunk,
 

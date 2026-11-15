@@ -34,7 +34,7 @@ public record Report(int number, Instant at, String trigger, LagRule.State state
     /** The report as plain text: for its file, and for the console. */
     public List<String> lines() {
         List<String> lines = new ArrayList<>();
-        lines.add("Report #" + number + " — " + WHEN.format(at) + " — " + trigger);
+        lines.add("Report #" + number + ": " + WHEN.format(at) + ", " + trigger);
         lines.add(String.format(Locale.ROOT, "%.1f TPS · a tick takes %.1f ms on average, %.1f ms at the 95th percentile, %.1f ms at worst",
                 tps, meanMs, p95Ms, worstMs));
         if (causes.isEmpty()) {
@@ -53,7 +53,7 @@ public record Report(int number, Instant at, String trigger, LagRule.State state
                 Finding finding = findings.get(i);
                 ChunkCensus where = finding.where();
                 String owner = finding.names().isEmpty() ? "" : " (" + String.join(", ", finding.names()) + ")";
-                lines.add(String.format(Locale.ROOT, "  %d. %d %s — %s, x %d z %d — %s%s", i + 1, finding.count(), finding.what(),
+                lines.add(String.format(Locale.ROOT, "  %d. %d %s at %s, x %d z %d: %s%s", i + 1, finding.count(), finding.what(),
                         where.world(), where.blockX(), where.blockZ(), finding.landName(), owner));
                 List<String> fixes = finding.fixes().stream().filter(Fix::isAction).map(this::describe).toList();
                 if (!fixes.isEmpty()) {
