@@ -2,7 +2,7 @@ id: farm-limits
 title: Animal farm limits
 summary: Why breeding or hatching stops where too many animals already stand, and what is never removed.
 intro: |
-  Bred your hundredth chicken and the hundred-and-first just... did not come? That is me, not a bug. Enormous animal farms are what make servers lag, so there is a ceiling.
+  If the hundred-and-first chicken does not hatch, that is not a bug. Enormous animal farms make servers lag, so there is a limit.
 icon: EGG
 category: Everything else
 order: 50
@@ -17,7 +17,7 @@ sections:
       Breeding and hatching stop when too many animals are packed together. Animals are counted within {setting:performance:radius|count} blocks of where the newborn would appear, so a farm over a chunk border is still one farm.
       {if:performance:most-of-one-kind > 0}No more than <white>{setting:performance:most-of-one-kind|count}</white> animals of the same kind may stand that close.{/if}
       {if:performance:most-animals > 0}And no more than <white>{setting:performance:most-animals|count}</white> breedable animals of any kind together.{/if}
-      The parents breed as usual, they just get no baby — and nothing breaks.
+      The parents breed as usual, they just get no baby.
   - question: What counts as farming?
     title: What is limited
     text: |
@@ -25,17 +25,17 @@ sections:
   - question: Will you remove my animals?
     title: Existing animals
     text: |
-      No. This only stops <i>new</i> animals appearing; every animal that already exists stays. Staff can thin a crowd that is slowing the server down — in that case babies go first, and a named, tamed or leashed animal is never removed.
+      No. This only stops <i>new</i> animals appearing; every animal that already exists stays. Staff can thin a crowd that is slowing the server down. In that case babies go first, and a named, tamed or leashed animal is never removed.
       Name your favourites with a name tag and they are safe from any thinning.
   - question: How do I make room?
     title: Making room
     text: |
-      Spread out: move animals into several farms, or slaughter the surplus (or sell it, if you are of a commercial bent). Once fewer animals stand within {setting:performance:radius|count} blocks, breeding works again at once.
+      Spread out: move animals into several farms, or slaughter or sell the surplus. Once fewer animals stand within {setting:performance:radius|count} blocks, breeding works again at once.
   - question: Will I be told that a farm is full?
     title: The warning
     text: |
-      {if:performance:tell-players}Yes: players close to a full farm get a short line in the action bar, at most once a minute, saying which limit was hit.{else}No, the server stays silent about it — the baby just does not appear.{/if}
+      {if:performance:tell-players}Yes: players close to a full farm get a short line in the action bar, at most once a minute, saying which limit was hit.{else}No, the server stays silent about it. The baby just does not appear.{/if}
   - question: Why are my farms slow while I am AFK?
     title: Farms while you are away
     text: |
-      {if:performance:away-farms}While every player near a farm is away from the keyboard, it runs at <white>{setting:performance:away-farm-rate}</white> of its usual speed: crops, saplings, mob spawning, spawners, breeding, iron golems, raids, laid eggs and piglin bartering — gold, wither skeleton, blaze and bartering farms in the Nether included (a slowed barter hands the gold back). "Near" is the simulation distance — the area the game keeps ticking around a player. One player nearby who is at the keyboard keeps it at full speed, and it is back to full speed the second you move again.{else}They are not — farms run at full speed whether anybody is at the keyboard or not.{/if}
+      {if:performance:away-farms}While every player near a farm is away from the keyboard, it runs at <white>{setting:performance:away-farm-rate}</white> of its usual speed: crops, saplings, mob spawning, spawners, breeding, iron golems, raids, laid eggs and piglin bartering. Gold, wither skeleton, blaze and bartering farms in the Nether are included (a slowed barter hands the gold back). "Near" is the simulation distance, the area the game keeps ticking around a player. One player nearby who is at the keyboard keeps it at full speed, and it is back to full speed the second you move again.{else}They are not. Farms run at full speed whether anybody is at the keyboard or not.{/if}
