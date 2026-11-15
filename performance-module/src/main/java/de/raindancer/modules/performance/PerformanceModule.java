@@ -61,7 +61,6 @@ public final class PerformanceModule implements FlexModule {
                 context.settings(PerformanceSettings.class, PerformanceSettings.DEFAULTS);
         Messages messages = context.core().messages();
         messages.defineFrom(PerformanceModule.class.getResourceAsStream("messages.yml"), context.chat().brand()::chatPrefix);
-        messages.seriousFrom(PerformanceModule.class.getResourceAsStream("messages-serious.yml"));
         int registered = PermissionNodes.register(context.plugin().getServer());
         if (registered > 0) {
             context.log().info("{} permission(s) registered.", registered);
