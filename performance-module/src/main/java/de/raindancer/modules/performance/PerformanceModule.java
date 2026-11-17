@@ -46,7 +46,7 @@ public final class PerformanceModule implements FlexModule {
     /** A minute of samples at the default 20 ms. */
     private static final int SAMPLES_KEPT = 3000;
 
-    private static final ModuleInfo INFO = ModuleInfo.of("performance", "Performance Optimizer", "0.6.1")
+    private static final ModuleInfo INFO = ModuleInfo.of("performance", "Performance Optimizer", "0.7.0")
             .describedAs("Finds what slows the server down, proposes fixes, reports to staff, and keeps farms in check")
             .by("Raindancer118");
 
@@ -104,6 +104,14 @@ public final class PerformanceModule implements FlexModule {
         }
         settings.onChange(fresh -> all.forEach(service -> service.settings(fresh)));
         PerformanceCommands.ready(services);
+        // The alerts switch is on /preferences (Core 2.103.0); /perf alerts stays as the shortcut.
+        try {
+            de.raindancer.core.ui.preference.Preference alerts = PerformancePreferences.alerts(messages, settings::current);
+            de.raindancer.core.ui.preference.Preferences.offer(plugin, alerts);
+            context.closeWith(() -> de.raindancer.core.ui.preference.Preferences.withdraw(alerts));
+        } catch (LinkageError olderCore) {
+            context.log().info("RainsCore is older than 2.103.0: lag reports are not on /preferences.");
+        }
 
         PerformanceSettings now = settings.current();
         context.log().info("Lag watch {}; farm limits {}: {} of one kind, {} animals within {} blocks; away players' farms {}.",
